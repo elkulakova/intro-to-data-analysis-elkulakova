@@ -1,3 +1,4 @@
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/bSTg6sNo)
 ## Лабораторная работа 1
 
 В качестве первой лабораторной работы вам необходимо решить несколько задач на манипуляцию данными на pandas. 
