@@ -29,32 +29,23 @@ def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, st
      - серию с числом однофамильцев по курсам
      - группу с максимальным числом однофамильцев
     """
-    names = df["фио"].str.split(" ", expand=True)
-    names = names.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
-    names["отчество"] = names.apply(
-        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
-    )
-    names = names.drop(["2е имя", "3е имя", "4е имя"], axis=1)
-
-    sep_name = pd.concat([df, names], axis=1)
-    surnames = sep_name.фамилия.value_counts()
+    surnames = df.surname.value_counts()
     exist = any(numb > 1 for numb in surnames)
     homonyms_numb = sum(numb for numb in surnames if numb > 1)
 
-    sep_name = sep_name.sort_values(by="курс", ascending=True)
+    df = df.sort_values(by="курс", ascending=True)
     courses = sorted(df.курс.unique())
     hom_on_course = pd.Series(
-        [sum(numb for numb in sep_name[sep_name.курс == c].фамилия.value_counts() if numb > 1) for c in courses],
+        [sum(numb for numb in df[df.курс == c].surname.value_counts() if numb > 1) for c in courses],
         index=courses,
     )
 
-    sep_name = sep_name.sort_values(by="группа", ascending=True)
+    df = df.sort_values(by="группа", ascending=True)
     groups = df.группа.unique()
     # print(Counter(sep_name[sep_name.группа == 'R33441c'].фамилия))
     # print(sep_name[sep_name.группа == 'R33441c'].фамилия.value_counts())
     groups_with_homs = {
-        group: sum(numb for numb in sep_name[sep_name.группа == group].фамилия.value_counts() if numb > 1)
-        for group in groups
+        group: sum(numb for numb in df[df.группа == group].surname.value_counts() if numb > 1) for group in groups
     }
     # max_hom_group = max(groups_with_homs.values(), key=groups_with_homs.get)
     max_hom_group = max(groups_with_homs, key=groups_with_homs.get)
@@ -87,18 +78,10 @@ def analyze_patronyms(df: pd.DataFrame) -> Tuple[int, pd.Series]:
      - количество студентов без отчества
      - серию с распределением студентов по полу
     """
-    names = df["фио"].str.split(" ", expand=True)
-    names = names.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
-    names["отчество"] = names.apply(
-        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
-    )
-    names = names.drop(["2е имя", "3е имя", "4е имя"], axis=1)
-    sep_name = pd.concat([df, names], axis=1)
-    stud_without_patr = len([patr for patr in sep_name.отчество if not patr])
+    stud_without_patr = len([patr for patr in df.patronim if not patr])
 
-    stud_with_patr = sep_name[sep_name.отчество != ""]  # ????
-    # genders = pd.Series(Counter(stud_with_patr['отчество'].apply(gender_identification)).values(), index=Counter(stud_with_patr['отчество'].apply(gender_identification)).keys())
-    genders = stud_with_patr["отчество"].apply(gender_identification).value_counts()
+    stud_with_patr = df[df.patronim != ""]  # наверное, потому что тут не условие if, поэтому с True не сравнить
+    genders = stud_with_patr.patronim.apply(gender_identification).value_counts()
 
     return stud_without_patr, genders
 
@@ -110,7 +93,6 @@ def faculty_statistics(data: pd.DataFrame) -> Tuple[pd.DataFrame, Tuple[str, int
     а также определяет факультеты с максимальным и минимальным числом студентов.
     """
     faculties = data.факультет.value_counts()
-    # print(data.факультет.value_counts())
     stats = pd.DataFrame(
         {"faculty": faculties.index, "students_numb": faculties.values}, index=range(1, len(faculties) + 1)
     )
@@ -126,12 +108,10 @@ def course_statistics(data: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
     Вычисляет среднее и медианное число студентов на каждом курсе.
     Возвращает две серии с результатами: сначала средние, потом медиана.
     """
-    courses = sorted(data["курс"].unique())
-    stats_c_av = pd.Series(
-        [data[data["курс"] == course]["факультет"].value_counts().mean() for course in courses], index=courses
-    )
+    courses = sorted(data.курс.unique())
+    stats_c_av = pd.Series([data[data.курс == cur].факультет.value_counts().mean() for cur in courses], index=courses)
     stats_c_med = pd.Series(
-        [data[data["курс"] == course]["факультет"].value_counts().median() for course in courses], index=courses
+        [data[data["курс"] == cur]["факультет"].value_counts().median() for cur in courses], index=courses
     )
 
     return stats_c_av, stats_c_med
@@ -149,23 +129,13 @@ def most_popular_name(data: pd.DataFrame) -> Tuple[str, str, str, int, float]:
      4. курс
      5. доля
     """
-    names_1 = data["фио"].str.split(" ", expand=True)
-    names_1 = names_1.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
-    names_1["отчество"] = names_1.apply(
-        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
-    )
-    names_1 = names_1.drop(["2е имя", "3е имя", "4е имя"], axis=1)
-    sep_name = pd.concat([data, names_1], axis=1)
-
-    top_name: str = sep_name.имя.describe()["top"]
-    top_group: str = sep_name[sep_name["имя"] == top_name]["группа"].describe()["top"]
-    top_fclt: str = sep_name[sep_name["имя"] == top_name][sep_name["группа"] == top_group]["факультет"].describe()[
+    top_name: str = data.name.describe()["top"]
+    top_group: str = data[data.name == top_name].группа.describe()["top"]
+    top_fclt: str = data[data.name == top_name][data.группа == top_group].факультет.describe()["top"]
+    top_course: int = data[data.name == top_name][data.группа == top_group][data.факультет == top_fclt].курс.describe()[
         "top"
     ]
-    top_course: int = sep_name[sep_name["имя"] == top_name][sep_name["группа"] == top_group][
-        sep_name["факультет"] == top_fclt
-    ]["курс"].describe()["top"]
-    frac = round(sep_name.имя.value_counts(normalize=True)[top_name], 2)
+    frac = round(data.name.value_counts(normalize=True)[top_name], 2)
 
     return top_name, top_group, top_fclt, top_course, frac
 
@@ -175,21 +145,12 @@ def find_students_with_name_starting_P(data: pd.DataFrame) -> pd.DataFrame:
     """
     Находит студентов, чье имя встречается ровно один раз и начинается на "П". Выводит их ФИО, факультет и курс.
     """
-    names_1 = data["фио"].str.split(" ", expand=True)
-    names_1 = names_1.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
-    names_1["отчество"] = names_1.apply(
-        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
-    )
-    names_1 = names_1.drop(["2е имя", "3е имя", "4е имя"], axis=1)
-    sep_name = pd.concat([data, names_1], axis=1)
-
     name_pat = r"\bП[А-Яа-яё\-–]+\b"
-    names = sep_name.имя.value_counts()
+    names = data.name.value_counts()
     ones = [name for name in names.index if re.match(name_pat, name) and names[name] == 1]
-    # print(sep_name[sep_name["имя"] == "Принц"]["фио"])
-    rare_fio = pd.Series(pd.concat([sep_name[sep_name["имя"] == one]["фио"] for one in ones], axis=0))
-    rare_fclt = pd.Series(pd.concat([sep_name[sep_name["имя"] == one]["факультет"] for one in ones], axis=0))
-    rare_crs = pd.Series(pd.concat([sep_name[sep_name["имя"] == one]["курс"] for one in ones], axis=0))
+    rare_fio = pd.Series(pd.concat([data[data.name == one].фио for one in ones], axis=0))
+    rare_fclt = pd.Series(pd.concat([data[data.name == one].факультет for one in ones], axis=0))
+    rare_crs = pd.Series(pd.concat([data[data.name == one].курс for one in ones], axis=0))
     rare = pd.concat([rare_fio, rare_fclt, rare_crs], axis=1)
 
     return rare
@@ -199,37 +160,24 @@ def find_students_with_name_starting_P(data: pd.DataFrame) -> pd.DataFrame:
 def highest_avg_grade_faculty(data: pd.DataFrame) -> Tuple[str, str, int]:
     """
     Находит факультет, на котором средний балл студентов третьего курса самый высокий.
-    Определяет пол, средний балл котого выше.
+    Определяет пол, средний балл которого выше.
     Сначала возвращает факультет, затем пол, затем балл.
     """
-    names_1 = data["фио"].str.split(" ", expand=True)
-    names_1 = names_1.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
-    names_1["отчество"] = names_1.apply(
-        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
-    )
-    names_1 = names_1.drop(["2е имя", "3е имя", "4е имя"], axis=1)
-    sep_name = pd.concat([data, names_1], axis=1)
-
-    crs_stat = sep_name[sep_name["курс"] == "3-й"]
-    fclts = crs_stat["факультет"].unique()
+    crs_stat = data[data.курс == "3-й"]
+    fclts = crs_stat.факультет.unique()
     top_point_fclt_kw: Dict[str, float] = {
-        fclt: crs_stat[crs_stat["факультет"] == fclt]["средний_балл"].describe()["mean"] for fclt in fclts
+        fclt: crs_stat[crs_stat.факультет == fclt].средний_балл.describe()["mean"] for fclt in fclts
     }
 
     top_point_fclt = max(top_point_fclt_kw, key=top_point_fclt_kw.get)
 
-    crs_stat["пол"] = crs_stat[crs_stat["факультет"] == top_point_fclt]["отчество"].apply(gender_identification)
-    print(crs_stat[crs_stat["факультет"] == top_point_fclt])
+    crs_stat["пол"] = crs_stat[crs_stat.факультет == top_point_fclt].patronim.apply(gender_identification)
 
-    crs_stat_m = crs_stat[crs_stat["факультет"] == top_point_fclt][crs_stat["пол"] == "male"][
-        "средний_балл"
-    ].describe()["mean"]
+    crs_stat_m = crs_stat[crs_stat.факультет == top_point_fclt][crs_stat.пол == "male"].средний_балл.describe()["mean"]
 
-    crs_stat_w = crs_stat[crs_stat["факультет"] == top_point_fclt][crs_stat["пол"] == "female"][
-        "средний_балл"
-    ].describe()[
+    crs_stat_w = crs_stat[crs_stat.факультет == top_point_fclt][crs_stat.пол == "female"].средний_балл.describe()[
         "mean"
-    ]  ### groupby надо тут
+    ]
 
     if crs_stat_m > crs_stat_w:
         return top_point_fclt, "male", round(crs_stat_m)
@@ -256,9 +204,16 @@ def find_consecutive_students(data: pd.DataFrame) -> pd.DataFrame:
 
 if __name__ == "__main__":
     data = pd.read_csv("isu_fake_data.csv")
-    # data["surname"] = "put your code here"
-    # data["name"] = "put your code here"
-    # data["patronim"] = "put your code here"
+
+    names_1 = data["фио"].str.split(" ", expand=True)
+    names_1 = names_1.rename(columns={0: "фамилия", 1: "имя", 2: "отчество", 3: "2е имя", 4: "3е имя", 5: "4е имя"})
+    names_1["отчество"] = names_1.apply(
+        lambda row: " ".join(filter(None, [row["отчество"], row["2е имя"], row["3е имя"], row["4е имя"]])), axis=1
+    )
+
+    data["surname"] = names_1["фамилия"]
+    data["name"] = names_1["имя"]
+    data["patronim"] = names_1["отчество"]
 
     # Задача 1
     num_students, num_groups, fsuir = filter_fsuir_students(data)
