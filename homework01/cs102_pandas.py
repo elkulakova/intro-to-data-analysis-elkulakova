@@ -42,12 +42,9 @@ def find_homonymous_students(df: pd.DataFrame) -> Tuple[bool, int, pd.Series, st
 
     df = df.sort_values(by="группа", ascending=True)
     groups = df.группа.unique()
-    # print(Counter(sep_name[sep_name.группа == 'R33441c'].фамилия))
-    # print(sep_name[sep_name.группа == 'R33441c'].фамилия.value_counts())
     groups_with_homs = {
         group: sum(numb for numb in df[df.группа == group].surname.value_counts() if numb > 1) for group in groups
     }
-    # max_hom_group = max(groups_with_homs.values(), key=groups_with_homs.get)
     max_hom_group = max(groups_with_homs, key=groups_with_homs.get)
 
     return exist, homonyms_numb, hom_on_course, max_hom_group
@@ -80,7 +77,7 @@ def analyze_patronyms(df: pd.DataFrame) -> Tuple[int, pd.Series]:
     """
     stud_without_patr = len([patr for patr in df.patronim if not patr])
 
-    stud_with_patr = df[df.patronim != ""]  # наверное, потому что тут не условие if, поэтому с True не сравнить
+    stud_with_patr = df[df.patronim != ""]
     genders = stud_with_patr.patronim.apply(gender_identification).value_counts()
 
     return stud_without_patr, genders
@@ -258,3 +255,28 @@ if __name__ == "__main__":
     result_9 = find_consecutive_students(data)
     print("Первые 5 студентов с подряд идущими табельными номерами:")
     print(result_9)
+
+    # Задача на защиту
+    # Для каждого факультета выведите количество групп и среднее количество студентов в группе.
+    groups_numb = data.groupby(['факультет'])['группа'].nunique()
+    faculties = data['факультет'].unique()
+    stud_av = data.groupby(['факультет'])['группа'].count()/data.groupby(['факультет'])['группа'].nunique()
+
+    print(f'количество групп на каждом факультете:')
+    print(groups_numb)
+    print(f'количество студентов в каждой группе на каждом факультете:')
+    print(stud_av)
+
+    # Для каждого факультета найдите курс, на котором обучается больше всего студентов. И курс, на котором студентов меньше всего.
+    df_stud_q = pd.DataFrame(data.groupby(['факультет', 'курс']).size().reset_index(name='количество студентов'))
+    min_fac_courses = df_stud_q.loc[df_stud_q.groupby(['факультет'])['количество студентов'].idxmin()]
+    max_fac_courses = df_stud_q.loc[df_stud_q.groupby(['факультет'])['количество студентов'].idxmax()]
+
+    print(f'факультеты и курсы с количесвтом студентов:')
+    print(df_stud_q)
+
+    print(f'курсы с наименьшим количеством студентов на каждом факультете:')
+    print(min_fac_courses)
+
+    print(f'курсы с наибольшим количеством студентов на каждом факультете:')
+    print(max_fac_courses)
